@@ -1,0 +1,6 @@
+import { NextResponse } from "next/server";
+import { getSessionUser, hasRole } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export async function GET() { const user = await getSessionUser(); if (!user) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 }); const shift = await prisma.cashShift.findFirst({ where: { userId: user.id, closedAt: null }, orderBy: { openedAt: "desc" } }); return NextResponse.json({ shift }); }
+export async function POST(request: Request) { const user = await getSessionUser(); if (!user || !hasRole(user, ["OWNER", "MANAGER", "CASHIER"])) return NextResponse.json({ error: "Không có quyền" }, { status: 403 }); const body = await request.json().catch(() => null); const openingCash = Number(body?.openingCash); if (!Number.isInteger(openingCash) || openingCash < 0) return NextResponse.json({ error: "Tiền đầu ca không hợp lệ" }, { status: 400 }); const existing = await prisma.cashShift.findFirst({ where: { userId: user.id, closedAt: null } }); if (existing) return NextResponse.json({ error: "Bạn đang có ca mở" }, { status: 409 }); const shift = await prisma.cashShift.create({ data: { branchId: user.branchId, userId: user.id, openingCash } }); return NextResponse.json({ shift }, { status: 201 }); }

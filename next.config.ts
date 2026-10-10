@@ -1,10 +1,12 @@
 import type { NextConfig } from "next";
 
+const isGithubPages = process.env.GITHUB_PAGES_BUILD === "true" || process.env.GITHUB_ACTIONS === "true";
+
 const nextConfig: NextConfig = {
-  distDir: process.env.GITHUB_ACTIONS === "true" ? ".next-pages" : ".next",
-  output: process.env.GITHUB_ACTIONS === "true" ? "export" : undefined,
-  basePath: process.env.GITHUB_ACTIONS === "true" ? "/Noel" : undefined,
-  assetPrefix: process.env.GITHUB_ACTIONS === "true" ? "/Noel/" : undefined,
+  distDir: process.env.NEXT_DIST_DIR || (isGithubPages ? ".next-pages" : ".next"),
+  output: isGithubPages ? "export" : undefined,
+  basePath: isGithubPages ? "/Noel" : undefined,
+  assetPrefix: isGithubPages ? "/Noel/" : undefined,
   images: { unoptimized: true },
   cacheComponents: true,
   partialPrefetching: true,
