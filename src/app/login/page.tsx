@@ -2,7 +2,9 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Coffee, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Loader2 } from "lucide-react";
+import brandLogo from "../brand-logo.png";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,7 +35,7 @@ export default function LoginPage() {
     <main className="min-h-screen bg-[#f8f5f0] px-4 py-10 text-[#302a25]">
       <section className="mx-auto max-w-md rounded-3xl border border-[#eadfd2] bg-white p-8 shadow-xl shadow-[#6b4b2a]/10">
         <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#6b4b2a] text-white"><Coffee size={24} /></div>
+          <Image src={brandLogo} alt="Logo Tiệm nhà Noel" priority className="h-16 w-16 rounded-full border border-[#eadfd2] object-cover" />
           <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a47d59]">Tiệm nhà Noel</p><h1 className="text-2xl font-bold">Đăng nhập quản trị</h1></div>
         </div>
         <form onSubmit={submit} className="space-y-5">
