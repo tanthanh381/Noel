@@ -57,11 +57,22 @@ Copy `.env.example` thành `.env`; không commit `.env` thật hoặc credential
 
 ## Tài khoản và phân quyền
 
-Backend/RBAC sẽ được triển khai ở module tiếp theo với các vai trò: Chủ quán, Quản lý, Thu ngân và Pha chế. Dữ liệu demo hiện được hiển thị dưới tài khoản giao diện `Nguyễn An · Quản lý`.
+Backend/RBAC đã có session HttpOnly và kiểm tra quyền ở các API chính. Tài khoản development sau khi seed: `owner@noel.local`, `manager@noel.local`, `cashier1@noel.local`, `cashier2@noel.local`, `barista@noel.local`.
+
+## Kiểm thử E2E
+
+Playwright kiểm thử luồng đăng nhập → mở ca → tạo đơn tiền mặt → chuyển trạng thái pha chế → hoàn thành và đọc lại đơn từ API:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
+Test dùng database local hiện tại, vì vậy nên chạy `npm run db:seed` trước khi kiểm thử trên môi trường development sạch.
 
 ## Giới hạn hiện tại và hướng phát triển
 
-Hiện chưa có đăng nhập đầy đủ, API transaction-safe cho tạo đơn/trừ kho, máy in, realtime WebSocket hay export CSV. Các phần tiếp theo cần triển khai: auth/RBAC server-side, transaction POS/kho/khuyến mãi, test unit/e2e Playwright và deploy database production.
+Các giới hạn còn lại: giao diện POS vẫn cần nối hoàn toàn vào API thật, chưa có máy in/realtime WebSocket/export CSV, chưa có màn hình đóng ca và báo cáo đầy đủ. Database production, rate limit phân tán và quy trình deploy cần cấu hình riêng trước khi vận hành thật.
 
 ## Quy trình đóng góp
 
