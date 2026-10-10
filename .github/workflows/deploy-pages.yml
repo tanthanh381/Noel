@@ -29,6 +29,8 @@ jobs:
         run: npm ci
       - name: Generate Prisma client
         run: npx prisma generate
+      - name: Exclude server API routes from static Pages build
+        run: rm -rf src/app/api
       - name: Build static site
         run: npm run build -- --webpack
         env:
