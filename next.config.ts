@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
   basePath: isGithubPages ? "/Noel" : undefined,
   assetPrefix: isGithubPages ? "/Noel/" : undefined,
   images: { unoptimized: true },
-  cacheComponents: true,
-  partialPrefetching: true,
+  cacheComponents: !isGithubPages,
+  partialPrefetching: !isGithubPages,
   turbopack: {
     rules: {
       "*.css": {
