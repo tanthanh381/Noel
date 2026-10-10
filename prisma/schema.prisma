@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  CASHIER
+  BARISTA
+}
+
+enum ProductStatus {
+  ACTIVE
+  PAUSED
+}
+
+enum TableStatus {
+  EMPTY
+  SERVING
+  RESERVED
+  NEEDS_CLEANING
+}
+
+enum OrderStatus {
+  NEW
+  IN_PROGRESS
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  OTHER
+}
+
+enum InventoryMovementType {
+  INBOUND
+  OUTBOUND
+  ADJUSTMENT
+  RETURN
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model Branch {
+  id        String      @id @default(cuid())
+  name      String
+  address   String?
+  createdAt DateTime    @default(now())
+  users     User[]
+  tables    CafeTable[]
+  orders    Order[]
+
+  @@map("branches")
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  branchId           String
+  branch             Branch              @relation(fields: [branchId], references: [id])
+  name               String
+  email              String              @unique
+  passwordHash       String
+  role               Role
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  orders             Order[]
+  shifts             CashShift[]
+  inventoryMovements InventoryMovement[]
+
+  @@index([branchId, role])
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  sortOrder Int       @default(0)
+  products  Product[]
+}
+
+model Product {
+  id           String           @id @default(cuid())
+  categoryId   String
+  category     Category         @relation(fields: [categoryId], references: [id])
+  code         String           @unique
+  name         String
+  imageUrl     String?
+  costPrice    Int
+  sellingPrice Int
+  status       ProductStatus    @default(ACTIVE)
+  createdAt    DateTime         @default(now())
+  orderItems   OrderItem[]
+  recipes      Recipe[]
+  sizes        ProductSize[]
+  toppings     ProductTopping[]
+
+  @@index([categoryId, status])
+}
+
+model ProductSize {
+  id         String  @id @default(cuid())
+  productId  String
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String
+  extraPrice Int     @default(0)
+
+  @@unique([productId, name])
+}
+
+model Topping {
+  id       String           @id @default(cuid())
+  name     String           @unique
+  price    Int
+  products ProductTopping[]
+}
+
+model ProductTopping {
+  productId String
+  toppingId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  topping   Topping @relation(fields: [toppingId], references: [id], onDelete: Cascade)
+
+  @@id([productId, toppingId])
+}
+
+model Ingredient {
+  id        String              @id @default(cuid())
+  name      String              @unique
+  unit      String
+  stock     Decimal             @default(0) @db.Decimal(12, 3)
+  minStock  Decimal             @default(0) @db.Decimal(12, 3)
+  recipes   Recipe[]
+  movements InventoryMovement[]
+}
+
+model Recipe {
+  id           String     @id @default(cuid())
+  productId    String
+  ingredientId String
+  quantity     Decimal    @db.Decimal(12, 3)
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([productId, ingredientId])
+}
+
+model CafeArea {
+  id     String      @id @default(cuid())
+  name   String
+  tables CafeTable[]
+}
+
+model CafeTable {
+  id       String      @id @default(cuid())
+  areaId   String
+  branchId String
+  name     String
+  status   TableStatus @default(EMPTY)
+  area     CafeArea    @relation(fields: [areaId], references: [id])
+  branch   Branch      @relation(fields: [branchId], references: [id])
+  orders   Order[]
+
+  @@unique([branchId, name])
+}
+
+model Customer {
+  id                String             @id @default(cuid())
+  name              String
+  phone             String?            @unique
+  note              String?
+  points            Int                @default(0)
+  orders            Order[]
+  pointTransactions PointTransaction[]
+  createdAt         DateTime           @default(now())
+}
+
+model Promotion {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  type         DiscountType
+  value        Int
+  minimumOrder Int          @default(0)
+  startsAt     DateTime
+  endsAt       DateTime
+  usageLimit   Int?
+  usedCount    Int          @default(0)
+  active       Boolean      @default(true)
+  orders       Order[]
+}
+
+model Order {
+  id                String             @id @default(cuid())
+  branchId          String
+  userId            String
+  customerId        String?
+  tableId           String?
+  promotionId       String?
+  orderNumber       String             @unique
+  type              OrderType
+  status            OrderStatus        @default(NEW)
+  subtotal          Int
+  discount          Int                @default(0)
+  tax               Int                @default(0)
+  total             Int
+  paymentMethod     PaymentMethod?
+  paidAt            DateTime?
+  createdAt         DateTime           @default(now())
+  branch            Branch             @relation(fields: [branchId], references: [id])
+  user              User               @relation(fields: [userId], references: [id])
+  customer          Customer?          @relation(fields: [customerId], references: [id])
+  table             CafeTable?         @relation(fields: [tableId], references: [id])
+  promotion         Promotion?         @relation(fields: [promotionId], references: [id])
+  items             OrderItem[]
+  pointTransactions PointTransaction[]
+
+  @@index([branchId, createdAt])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String
+  productId    String
+  nameSnapshot String
+  unitPrice    Int
+  quantity     Int
+  sizeName     String?
+  note         String?
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product @relation(fields: [productId], references: [id])
+}
+
+model PointTransaction {
+  id         String   @id @default(cuid())
+  customerId String
+  orderId    String?
+  points     Int
+  reason     String
+  createdAt  DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id])
+  order      Order?   @relation(fields: [orderId], references: [id])
+}
+
+model CashShift {
+  id           String    @id @default(cuid())
+  branchId     String
+  userId       String
+  openedAt     DateTime  @default(now())
+  closedAt     DateTime?
+  openingCash  Int
+  closingCash  Int?
+  expectedCash Int?
+  user         User      @relation(fields: [userId], references: [id])
+}
+
+model InventoryMovement {
+  id           String                @id @default(cuid())
+  ingredientId String
+  userId       String
+  type         InventoryMovementType
+  quantity     Decimal               @db.Decimal(12, 3)
+  note         String?
+  createdAt    DateTime              @default(now())
+  ingredient   Ingredient            @relation(fields: [ingredientId], references: [id])
+  user         User                  @relation(fields: [userId], references: [id])
+
+  @@index([ingredientId, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+}

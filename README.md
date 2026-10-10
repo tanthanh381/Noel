@@ -12,19 +12,21 @@ Dashboard POS hiện đại cho quán cà phê, tối ưu thao tác trên máy t
 
 ## Kiến trúc dự kiến
 
-Ứng dụng sử dụng Next.js App Router + TypeScript + Tailwind CSS. MVP giao diện hiện đang dùng dữ liệu mẫu cục bộ để kiểm chứng trải nghiệm. Bước backend tiếp theo sẽ thêm PostgreSQL + Prisma, session HttpOnly, RBAC phía server, transaction cho thanh toán/kho/điểm và audit log. Kiến trúc domain được giữ theo một cửa hàng nhưng có `branchId` để mở rộng nhiều chi nhánh.
+Ứng dụng sử dụng Next.js App Router + TypeScript + Tailwind CSS, PostgreSQL local và Prisma. Database được chạy bằng Docker Compose; schema đã có branch, người dùng, RBAC role, sản phẩm, size, topping, nguyên liệu, định mức, bàn, khách hàng, khuyến mãi, đơn hàng, ca tiền mặt, biến động kho và audit log. API `/api/products` đã đọc dữ liệu thật từ PostgreSQL. Kiến trúc domain được giữ theo một cửa hàng nhưng có `branchId` để mở rộng nhiều chi nhánh.
 
 ## Yêu cầu môi trường
 
 - Node.js 20+
 - npm 10+
-- PostgreSQL 16 (giai đoạn backend)
-- Docker Desktop (tùy chọn)
+- Docker Desktop với `docker-compose`
 
 ## Cài đặt và chạy
 
 ```bash
 npm install
+npm run db:up
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
@@ -35,9 +37,23 @@ npm run lint
 npm run build
 ```
 
+## Database local
+
+PostgreSQL chạy tại `localhost:5432`, database `noel`, user `postgres`, password development `postgres`. Dữ liệu nằm trong Docker volume `noel_noel_postgres_data` và không được commit lên GitHub.
+
+```bash
+npm run db:up       # khởi động PostgreSQL
+npm run db:migrate  # tạo/apply migration
+npm run db:seed     # tạo dữ liệu mẫu
+npm run db:studio   # mở Prisma Studio
+npm run db:down     # dừng container, giữ volume
+```
+
+Tài khoản development sau khi seed đều dùng mật khẩu `NoelDev-2026-ChangeMe`; hãy đổi ngay khi thêm màn hình đăng nhập thật. Không dùng mật khẩu này trong production.
+
 ## Biến môi trường
 
-MVP giao diện chưa cần biến môi trường. Khi bật backend, tạo `.env` từ `.env.example`; không commit `.env` thật hoặc credentials.
+Copy `.env.example` thành `.env`; không commit `.env` thật hoặc credentials. `DATABASE_URL` mặc định trỏ tới PostgreSQL Docker local.
 
 ## Tài khoản và phân quyền
 
@@ -45,7 +61,7 @@ Backend/RBAC sẽ được triển khai ở module tiếp theo với các vai tr
 
 ## Giới hạn hiện tại và hướng phát triển
 
-Hiện chưa có API/database thật, đăng nhập, migration/seed, máy in, realtime WebSocket hay export CSV. Các phần tiếp theo cần triển khai theo thứ tự: schema Prisma + migration/seed, auth/RBAC, API transaction-safe cho POS/kho/khuyến mãi, test unit/e2e Playwright, Docker Compose và deploy.
+Hiện chưa có đăng nhập đầy đủ, API transaction-safe cho tạo đơn/trừ kho, máy in, realtime WebSocket hay export CSV. Các phần tiếp theo cần triển khai: auth/RBAC server-side, transaction POS/kho/khuyến mãi, test unit/e2e Playwright và deploy database production.
 
 ## Quy trình đóng góp
 
