@@ -8,6 +8,22 @@ import { hasTrustedOrigin } from "@/lib/request-security";
 type IncomingItem = { productId: string; quantity: number; size?: string };
 type IncomingOrder = { items?: IncomingItem[]; type?: string; paymentMethod?: string; promotionCode?: string; customerId?: string; tableId?: string; note?: string };
 
+export async function GET() {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const kitchenStatuses = ["NEW", "IN_PROGRESS", "READY"] as const;
+  const orders = await prisma.order.findMany({
+    where: {
+      branchId: user.branchId,
+      ...(user.role === "BARISTA" ? { status: { in: [...kitchenStatuses] } } : {}),
+    },
+    include: { items: true, table: true, user: { select: { name: true } } },
+    orderBy: { createdAt: "asc" },
+    take: 50,
+  });
+  return NextResponse.json({ orders });
+}
+
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user || !hasRole(user, ["OWNER", "MANAGER", "CASHIER"])) return NextResponse.json({ error: "Không có quyền tạo đơn" }, { status: 403 });
