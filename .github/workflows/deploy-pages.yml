@@ -34,7 +34,7 @@ jobs:
       - name: Build static site
         run: npm run build -- --webpack
         env:
-          GITHUB_ACTIONS: "true"
+          GITHUB_PAGES_BUILD: "true"
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

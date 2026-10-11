@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
-const isGithubPages = process.env.GITHUB_PAGES_BUILD === "true" || process.env.GITHUB_ACTIONS === "true";
+// GitHub Actions is also set by other Git-based deployment providers. Use a
+// dedicated flag so the Vercel build keeps its server routes and root assets.
+const isGithubPages = process.env.GITHUB_PAGES_BUILD === "true";
 
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || (isGithubPages ? ".next-pages" : ".next"),
