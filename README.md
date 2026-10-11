@@ -26,7 +26,7 @@ Dashboard POS hiện đại cho quán cà phê, tối ưu thao tác trên máy t
 npm install
 npm run db:up
 npm run db:migrate
-npm run db:seed
+ALLOW_DESTRUCTIVE_SEED=true npm run db:seed
 npm run dev
 ```
 
@@ -44,7 +44,7 @@ PostgreSQL chạy tại `localhost:5432`, database `noel`, user `postgres`, pass
 ```bash
 npm run db:up       # khởi động PostgreSQL
 npm run db:migrate  # tạo/apply migration
-npm run db:seed     # tạo dữ liệu mẫu
+ALLOW_DESTRUCTIVE_SEED=true npm run db:seed # tạo lại dữ liệu mẫu development
 npm run db:studio   # mở Prisma Studio
 npm run db:down     # dừng container, giữ volume
 ```
@@ -61,14 +61,15 @@ Backend/RBAC đã có session HttpOnly và kiểm tra quyền ở các API chín
 
 ## Kiểm thử E2E
 
-Playwright kiểm thử luồng đăng nhập → mở ca → tạo đơn tiền mặt → chuyển trạng thái pha chế → hoàn thành và đọc lại đơn từ API:
+Playwright kiểm thử luồng đăng nhập → mở ca → tạo đơn tiền mặt → chuyển trạng thái pha chế → hoàn thành và đọc lại đơn từ API. Test chỉ chạy trên database có tên kết thúc bằng `_test` để không ghi đè dữ liệu development/production:
 
 ```bash
 npx playwright install chromium
-npm run test:e2e
+docker exec noel-postgres psql -U postgres -d postgres -c "CREATE DATABASE noel_test"
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/noel_test?schema=public npm run test:e2e
 ```
 
-Test dùng database local hiện tại, vì vậy nên chạy `npm run db:seed` trước khi kiểm thử trên môi trường development sạch.
+Global setup tự chạy migration và seed lại database `noel_test` trước bộ E2E. Seed development có thao tác dọn dữ liệu và vì vậy yêu cầu xác nhận rõ bằng `ALLOW_DESTRUCTIVE_SEED=true`; không chạy seed trên production.
 
 ## Giới hạn hiện tại và hướng phát triển
 

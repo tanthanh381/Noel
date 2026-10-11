@@ -5,7 +5,12 @@ const prisma = new PrismaClient();
 const hashPassword = (value: string) => hash(value, 12);
 
 async function main() {
-  await prisma.auditLog.deleteMany(); await prisma.pointTransaction.deleteMany(); await prisma.orderItem.deleteMany(); await prisma.order.deleteMany(); await prisma.promotion.deleteMany(); await prisma.customer.deleteMany(); await prisma.inventoryMovement.deleteMany(); await prisma.recipe.deleteMany(); await prisma.ingredient.deleteMany(); await prisma.productTopping.deleteMany(); await prisma.productSize.deleteMany(); await prisma.product.deleteMany(); await prisma.topping.deleteMany(); await prisma.category.deleteMany(); await prisma.cafeTable.deleteMany(); await prisma.cafeArea.deleteMany(); await prisma.user.deleteMany(); await prisma.branch.deleteMany();
+  const databaseUrl = process.env.DATABASE_URL;
+  const databaseName = databaseUrl ? new URL(databaseUrl).pathname.slice(1) : "";
+  if (!databaseName.endsWith("_test") && process.env.ALLOW_DESTRUCTIVE_SEED !== "true") {
+    throw new Error("Seed có dọn dữ liệu nên chỉ được chạy trên database *_test. Đặt ALLOW_DESTRUCTIVE_SEED=true nếu bạn chủ động seed database development.");
+  }
+  await prisma.auditLog.deleteMany(); await prisma.pointTransaction.deleteMany(); await prisma.orderItem.deleteMany(); await prisma.order.deleteMany(); await prisma.cashShift.deleteMany(); await prisma.promotion.deleteMany(); await prisma.customer.deleteMany(); await prisma.inventoryMovement.deleteMany(); await prisma.recipe.deleteMany(); await prisma.ingredient.deleteMany(); await prisma.productTopping.deleteMany(); await prisma.productSize.deleteMany(); await prisma.product.deleteMany(); await prisma.topping.deleteMany(); await prisma.category.deleteMany(); await prisma.cafeTable.deleteMany(); await prisma.cafeArea.deleteMany(); await prisma.user.deleteMany(); await prisma.branch.deleteMany();
   const branch = await prisma.branch.create({ data: { name: "Chi nhánh trung tâm", address: "Tiệm nhà Noel" } });
   const users = await Promise.all([
     ["Chủ quán", "owner@noel.local", Role.OWNER], ["Quản lý", "manager@noel.local", Role.MANAGER], ["Thu ngân 1", "cashier1@noel.local", Role.CASHIER], ["Thu ngân 2", "cashier2@noel.local", Role.CASHIER], ["Nhân viên pha chế", "barista@noel.local", Role.BARISTA],

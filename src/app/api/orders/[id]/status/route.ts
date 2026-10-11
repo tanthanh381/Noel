@@ -3,5 +3,35 @@ import { getSessionUser, hasRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canTransitionOrder } from "@/lib/order-domain";
 import { Prisma } from "@prisma/client";
+import { hasTrustedOrigin } from "@/lib/request-security";
 
-export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) { const user = await getSessionUser(); if (!user || !hasRole(user, ["OWNER", "MANAGER", "CASHIER", "BARISTA"])) return NextResponse.json({ error: "Không có quyền" }, { status: 403 }); const { id } = await context.params; const body = await request.json().catch(() => null); const nextStatus = String(body?.status || ""); try { const result = await prisma.$transaction(async (tx) => { const order = await tx.order.findFirst({ where: { id, branchId: user.branchId }, include: { items: { include: { product: { include: { recipes: true } } } } } }); if (!order || !canTransitionOrder(order.status, nextStatus)) throw new Error("Chuyển trạng thái đơn không hợp lệ"); if (nextStatus === "COMPLETED") { for (const item of order.items) for (const recipe of item.product.recipes) { const amount = new Prisma.Decimal(recipe.quantity).mul(item.quantity); const updated = await tx.ingredient.updateMany({ where: { id: recipe.ingredientId, stock: { gte: amount } }, data: { stock: { decrement: amount } } }); if (updated.count !== 1) throw new Error("Không đủ nguyên liệu để hoàn thành đơn"); await tx.inventoryMovement.create({ data: { ingredientId: recipe.ingredientId, userId: user.id, type: "OUTBOUND", quantity: amount, note: `Trừ kho cho đơn ${order.orderNumber}` } }); } } return tx.order.update({ where: { id }, data: { status: nextStatus as "NEW" | "IN_PROGRESS" | "READY" | "COMPLETED" | "CANCELLED" } }); }); return NextResponse.json({ order: result }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Không thể cập nhật đơn" }, { status: 400 }); } }
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const user = await getSessionUser();
+  if (!user || !hasRole(user, ["OWNER", "MANAGER", "CASHIER", "BARISTA"])) return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
+  if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Nguồn yêu cầu không hợp lệ" }, { status: 403 });
+  const { id } = await context.params;
+  const body = await request.json().catch(() => null);
+  const nextStatus = String(body?.status || "");
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findFirst({ where: { id, branchId: user.branchId }, include: { items: { include: { product: { include: { recipes: true } } } } } });
+      if (!order || !canTransitionOrder(order.status, nextStatus)) throw new Error("Chuyển trạng thái đơn không hợp lệ");
+      const claimed = await tx.order.updateMany({ where: { id, branchId: user.branchId, status: order.status }, data: { status: nextStatus as "NEW" | "IN_PROGRESS" | "READY" | "COMPLETED" | "CANCELLED" } });
+      if (claimed.count !== 1) throw new Error("Đơn hàng vừa được cập nhật bởi một yêu cầu khác");
+      if (nextStatus === "COMPLETED") {
+        for (const item of order.items) {
+          for (const recipe of item.product.recipes) {
+            const amount = new Prisma.Decimal(recipe.quantity).mul(item.quantity);
+            const updated = await tx.ingredient.updateMany({ where: { id: recipe.ingredientId, stock: { gte: amount } }, data: { stock: { decrement: amount } } });
+            if (updated.count !== 1) throw new Error("Không đủ nguyên liệu để hoàn thành đơn");
+            await tx.inventoryMovement.create({ data: { ingredientId: recipe.ingredientId, userId: user.id, type: "OUTBOUND", quantity: amount, note: `Trừ kho cho đơn ${order.orderNumber}` } });
+          }
+        }
+      }
+      return tx.order.findUniqueOrThrow({ where: { id } });
+    });
+    return NextResponse.json({ order: result });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Không thể cập nhật đơn" }, { status: 400 });
+  }
+}
